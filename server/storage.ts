@@ -1,206 +1,141 @@
 import { 
-  type User, 
+  type User as UserSchema,
   type InsertUser, 
-  type PortfolioContent,
+  type PortfolioContent as PortfolioContentSchema,
   type InsertPortfolioContent,
-  type Project,
+  type Project as ProjectSchema,
   type InsertProject,
-  type Experience,
+  type Experience as ExperienceSchema,
   type InsertExperience,
-  type ContactMessage,
+  type ContactMessage as ContactMessageSchema,
   type InsertContactMessage
 } from "@shared/schema";
-import { randomUUID } from "crypto";
+import User from './models/user';
+import Project from './models/project';
+import Experience from './models/experience';
+import ContactMessage from './models/contactMessage';
+import PortfolioContent from './models/portfolioContent';
 
 export interface IStorage {
   // User methods
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUser(id: string): Promise<UserSchema | undefined>;
+  getUserByUsername(username: string): Promise<UserSchema | undefined>;
+  createUser(user: InsertUser): Promise<UserSchema>;
   
   // Portfolio content methods
-  getPortfolioContent(): Promise<PortfolioContent[]>;
-  getPortfolioContentBySection(section: string): Promise<PortfolioContent | undefined>;
-  createPortfolioContent(content: InsertPortfolioContent): Promise<PortfolioContent>;
+  getPortfolioContent(): Promise<PortfolioContentSchema[]>;
+  getPortfolioContentBySection(section: string): Promise<PortfolioContentSchema | undefined>;
+  createPortfolioContent(content: InsertPortfolioContent): Promise<PortfolioContentSchema>;
   
   // Project methods
-  getProjects(): Promise<Project[]>;
-  getFeaturedProjects(): Promise<Project[]>;
-  createProject(project: InsertProject): Promise<Project>;
+  getProjects(): Promise<ProjectSchema[]>;
+  getProject(id: string): Promise<ProjectSchema | undefined>;
+  getFeaturedProjects(): Promise<ProjectSchema[]>;
+  createProject(project: InsertProject): Promise<ProjectSchema>;
+  updateProject(id: string, project: Partial<InsertProject>): Promise<ProjectSchema>;
+  deleteProject(id: string): Promise<void>;
   
   // Experience methods
-  getExperiences(): Promise<Experience[]>;
-  createExperience(experience: InsertExperience): Promise<Experience>;
+  getExperiences(): Promise<ExperienceSchema[]>;
+  createExperience(experience: InsertExperience): Promise<ExperienceSchema>;
   
   // Contact message methods
-  getContactMessages(): Promise<ContactMessage[]>;
-  createContactMessage(message: InsertContactMessage): Promise<ContactMessage>;
+  getContactMessages(): Promise<ContactMessageSchema[]>;
+  createContactMessage(message: InsertContactMessage): Promise<ContactMessageSchema>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private portfolioContent: Map<string, PortfolioContent>;
-  private projects: Map<string, Project>;
-  private experiences: Map<string, Experience>;
-  private contactMessages: Map<string, ContactMessage>;
-
-  constructor() {
-    this.users = new Map();
-    this.portfolioContent = new Map();
-    this.projects = new Map();
-    this.experiences = new Map();
-    this.contactMessages = new Map();
-    
-    // Initialize with sample data
-    this.initializeSampleData();
-  }
-
-  private initializeSampleData() {
-    // Add sample projects
-    const project1: Project = {
-      id: randomUUID(),
-      title: "Ribeez POS",
-      description: "Restaurant management system processing 500+ daily orders across 30+ locations with 99.9% uptime.",
-      technologies: ["Node.js", "MySQL", "BullMQ"],
-      featured: true,
-      metrics: { orders: "500+", locations: "30+", uptime: "99.9%" },
-      createdAt: new Date(),
-    };
-    
-    const project2: Project = {
-      id: randomUUID(),
-      title: "Spirestro SaaS",
-      description: "Multi-tenant SaaS platform supporting 50+ restaurant entities with shared infrastructure and real-time analytics.",
-      technologies: ["Multi-tenant", "Analytics", "BullMQ"],
-      featured: true,
-      metrics: { entities: "50+", jobs: "1000+", failure_rate: "<1%" },
-      createdAt: new Date(),
-    };
-    
-    this.projects.set(project1.id, project1);
-    this.projects.set(project2.id, project2);
-    
-    // Add sample experience
-    const experience: Experience = {
-      id: randomUUID(),
-      company: "Spirehub Softwares Pvt. Ltd",
-      position: "Backend Developer",
-      location: "Noida, UP",
-      startDate: "Jul 2024",
-      endDate: null,
-      description: [
-        "Developed and maintained 15+ RESTful APIs serving 500+ daily requests with 99.8% uptime",
-        "Optimized database queries by 73%, reducing average latency from 450ms to 120ms",
-        "Implemented Redis caching, decreasing database load by 40% and improving response times by 60%",
-        "Established CI/CD pipelines reducing release times by 25%"
-      ],
-      technologies: ["Node.js", "Express.js", "MySQL", "Redis", "Docker"],
-      isCurrent: true,
-    };
-    
-    this.experiences.set(experience.id, experience);
-  }
-
+export class DbStorage implements IStorage {
   // User methods
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getUser(id: string): Promise<UserSchema | undefined> {
+    const user = await User.findByPk(id);
+    return user?.get({ plain: true });
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async getUserByUsername(username: string): Promise<UserSchema | undefined> {
+    const user = await User.findOne({ where: { username } });
+    return user?.get({ plain: true });
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async createUser(insertUser: InsertUser): Promise<UserSchema> {
+    const user = await User.create(insertUser as any);
+    return user.get({ plain: true });
   }
 
   // Portfolio content methods
-  async getPortfolioContent(): Promise<PortfolioContent[]> {
-    return Array.from(this.portfolioContent.values()).filter(content => content.isActive);
+  async getPortfolioContent(): Promise<PortfolioContentSchema[]> {
+    const content = await PortfolioContent.findAll({ where: { isActive: true } });
+    return content.map(c => c.get({ plain: true }));
   }
 
-  async getPortfolioContentBySection(section: string): Promise<PortfolioContent | undefined> {
-    return Array.from(this.portfolioContent.values()).find(
-      content => content.section === section && content.isActive
-    );
+  async getPortfolioContentBySection(section: string): Promise<PortfolioContentSchema | undefined> {
+    const content = await PortfolioContent.findOne({ where: { section, isActive: true } });
+    return content?.get({ plain: true });
   }
 
-  async createPortfolioContent(insertContent: InsertPortfolioContent): Promise<PortfolioContent> {
-    const id = randomUUID();
-    const content: PortfolioContent = {
-      ...insertContent,
-      id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    this.portfolioContent.set(id, content);
-    return content;
+  async createPortfolioContent(insertContent: InsertPortfolioContent): Promise<PortfolioContentSchema> {
+    const content = await PortfolioContent.create(insertContent as any);
+    return content.get({ plain: true });
   }
 
   // Project methods
-  async getProjects(): Promise<Project[]> {
-    return Array.from(this.projects.values()).sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+  async getProjects(): Promise<ProjectSchema[]> {
+    const projects = await Project.findAll({ order: [['createdAt', 'DESC']] });
+    return projects.map(p => p.get({ plain: true }));
   }
 
-  async getFeaturedProjects(): Promise<Project[]> {
-    return Array.from(this.projects.values())
-      .filter(project => project.featured)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  async getProject(id: string): Promise<ProjectSchema | undefined> {
+    const project = await Project.findByPk(id);
+    return project?.get({ plain: true });
   }
 
-  async createProject(insertProject: InsertProject): Promise<Project> {
-    const id = randomUUID();
-    const project: Project = {
-      ...insertProject,
-      id,
-      createdAt: new Date(),
-    };
-    this.projects.set(id, project);
-    return project;
+  async getFeaturedProjects(): Promise<ProjectSchema[]> {
+    const projects = await Project.findAll({ where: { featured: true }, order: [['createdAt', 'DESC']] });
+    return projects.map(p => p.get({ plain: true }));
+  }
+
+  async createProject(insertProject: InsertProject): Promise<ProjectSchema> {
+    const project = await Project.create(insertProject as any);
+    return project.get({ plain: true });
+  }
+
+  async updateProject(id: string, data: Partial<InsertProject>): Promise<ProjectSchema> {
+    const project = await Project.findByPk(id);
+    if (!project) {
+      throw new Error('Project not found');
+    }
+    await project.update(data);
+    return project.get({ plain: true });
+  }
+
+  async deleteProject(id: string): Promise<void> {
+    const project = await Project.findByPk(id);
+    if (!project) {
+      throw new Error('Project not found');
+    }
+    await project.destroy();
   }
 
   // Experience methods
-  async getExperiences(): Promise<Experience[]> {
-    return Array.from(this.experiences.values()).sort((a, b) => {
-      // Sort by current first, then by start date descending
-      if (a.isCurrent && !b.isCurrent) return -1;
-      if (!a.isCurrent && b.isCurrent) return 1;
-      return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
-    });
+  async getExperiences(): Promise<ExperienceSchema[]> {
+    const experiences = await Experience.findAll({ order: [['isCurrent', 'DESC'], ['startDate', 'DESC']] });
+    return experiences.map(e => e.get({ plain: true }));
   }
 
-  async createExperience(insertExperience: InsertExperience): Promise<Experience> {
-    const id = randomUUID();
-    const experience: Experience = { ...insertExperience, id };
-    this.experiences.set(id, experience);
-    return experience;
+  async createExperience(insertExperience: InsertExperience): Promise<ExperienceSchema> {
+    const experience = await Experience.create(insertExperience as any);
+    return experience.get({ plain: true });
   }
 
   // Contact message methods
-  async getContactMessages(): Promise<ContactMessage[]> {
-    return Array.from(this.contactMessages.values()).sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+  async getContactMessages(): Promise<ContactMessageSchema[]> {
+    const messages = await ContactMessage.findAll({ order: [['createdAt', 'DESC']] });
+    return messages.map(m => m.get({ plain: true }));
   }
 
-  async createContactMessage(insertMessage: InsertContactMessage): Promise<ContactMessage> {
-    const id = randomUUID();
-    const message: ContactMessage = {
-      ...insertMessage,
-      id,
-      isRead: false,
-      createdAt: new Date(),
-    };
-    this.contactMessages.set(id, message);
-    return message;
+  async createContactMessage(insertMessage: InsertContactMessage): Promise<ContactMessageSchema> {
+    const message = await ContactMessage.create(insertMessage as any);
+    return message.get({ plain: true });
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DbStorage();
