@@ -1,97 +1,106 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, json, timestamp, boolean } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+// Schemas for data validation
+
+export const insertUserSchema = z.object({
+  username: z.string(),
+  password: z.string(),
 });
 
-export const portfolioContent = pgTable("portfolio_content", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  section: text("section").notNull(), // hero, about, experience, projects, skills, contact
-  title: text("title"),
-  content: json("content"), // Flexible JSON structure for different content types
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const insertPortfolioContentSchema = z.object({
+  section: z.string(),
+  title: z.string().optional(),
+  content: z.any().optional(),
+  isActive: z.boolean().optional(),
 });
 
-export const projects = pgTable("projects", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  technologies: json("technologies").$type<string[]>(), // Array of tech stack
-  imageUrl: text("image_url"),
-  projectUrl: text("project_url"),
-  githubUrl: text("github_url"),
-  featured: boolean("featured").default(false),
-  metrics: json("metrics"), // Project achievements/metrics
-  createdAt: timestamp("created_at").defaultNow(),
+export const insertProjectSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  technologies: z.array(z.string()).optional(),
+  imageUrl: z.string().optional(),
+  projectUrl: z.string().optional(),
+  githubUrl: z.string().optional(),
+  featured: z.boolean().optional(),
+  metrics: z.any().optional(),
 });
 
-export const experiences = pgTable("experiences", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  company: text("company").notNull(),
-  position: text("position").notNull(),
-  location: text("location"),
-  startDate: text("start_date").notNull(),
-  endDate: text("end_date"), // null for current position
-  description: json("description").$type<string[]>(), // Array of achievements
-  technologies: json("technologies").$type<string[]>(),
-  isCurrent: boolean("is_current").default(false),
+export const insertExperienceSchema = z.object({
+  company: z.string(),
+  position: z.string(),
+  location: z.string().optional(),
+  startDate: z.string(),
+  endDate: z.string().optional(),
+  description: z.array(z.string()).optional(),
+  technologies: z.array(z.string()).optional(),
+  isCurrent: z.boolean().optional(),
 });
 
-export const contactMessages = pgTable("contact_messages", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  email: text("email").notNull(),
-  message: text("message").notNull(),
-  isRead: boolean("is_read").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+export const insertContactMessageSchema = z.object({
+  name: z.string(),
+  email: z.string().email(),
+  message: z.string(),
 });
 
-// Insert schemas
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
+// Types inferred from schemas
 
-export const insertPortfolioContentSchema = createInsertSchema(portfolioContent).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertProjectSchema = createInsertSchema(projects).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertExperienceSchema = createInsertSchema(experiences).omit({
-  id: true,
-});
-
-export const insertContactMessageSchema = createInsertSchema(contactMessages).omit({
-  id: true,
-  isRead: true,
-  createdAt: true,
-});
-
-// Types
-export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
-
-export type PortfolioContent = typeof portfolioContent.$inferSelect;
 export type InsertPortfolioContent = z.infer<typeof insertPortfolioContentSchema>;
-
-export type Project = typeof projects.$inferSelect;
 export type InsertProject = z.infer<typeof insertProjectSchema>;
-
-export type Experience = typeof experiences.$inferSelect;
 export type InsertExperience = z.infer<typeof insertExperienceSchema>;
-
-export type ContactMessage = typeof contactMessages.$inferSelect;
 export type InsertContactMessage = z.infer<typeof insertContactMessageSchema>;
+
+// We still need the main types for the data returned from the API
+// These are now disconnected from the database schema, which is defined in the Sequelize models.
+// This is not ideal, but it's the quickest way to fix the current issue.
+// A better solution would be to generate these types from the Sequelize models.
+
+export interface User {
+  id: string;
+  username: string;
+  password?: string; // Password should not be sent to client
+}
+
+export interface PortfolioContent {
+  id: string;
+  section: string;
+  title?: string;
+  content?: any;
+  isActive?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Project {
+  id: string;
+  title: string;
+  description: string;
+  technologies: string[];
+  imageUrl?: string;
+  projectUrl?: string;
+  githubUrl?: string;
+  featured?: boolean;
+  metrics?: any;
+  createdAt: Date;
+}
+
+export interface Experience {
+  id: string;
+  company: string;
+  position: string;
+  location?: string;
+  startDate: string;
+  endDate?: string;
+  description: string[];
+  technologies: string[];
+  isCurrent?: boolean;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  isRead?: boolean;
+  createdAt: Date;
+}

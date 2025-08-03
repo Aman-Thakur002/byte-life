@@ -10,8 +10,19 @@ import { ProjectCard } from "@/components/portfolio/project-card";
 import { SkillsCard } from "@/components/portfolio/skills-card";
 import { MetricsCard } from "@/components/portfolio/metrics-card";
 import { ContactCard } from "@/components/portfolio/contact-card";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { Project } from "@/types/portfolio";
 
 export default function Home() {
+  const { data: projects, isLoading } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/projects");
+      return res.json();
+    },
+  });
+
   return (
     <div className="min-h-screen bg-gradient-portfolio text-white overflow-x-hidden">
       <BackgroundAnimation />
@@ -53,23 +64,13 @@ export default function Home() {
               </div>
               
               {/* Project Cards - 2 columns each */}
-              <div className="md:col-span-1 lg:col-span-2">
-                <ProjectCard 
-                  title="Ribeez POS"
-                  description="Restaurant management system processing 500+ daily orders across 30+ locations with 99.9% uptime."
-                  technologies={["Node.js", "MySQL", "BullMQ"]}
-                  icon="fas fa-cash-register"
-                />
-              </div>
-              
-              <div className="md:col-span-1 lg:col-span-2">
-                <ProjectCard 
-                  title="Spirestro SaaS"
-                  description="Multi-tenant SaaS platform supporting 50+ restaurant entities with shared infrastructure and real-time analytics."
-                  technologies={["Multi-tenant", "Analytics", "BullMQ"]}
-                  icon="fas fa-cloud"
-                />
-              </div>
+              {isLoading
+                ? "Loading projects..."
+                : projects?.map((project) => (
+                    <div className="md:col-span-1 lg:col-span-2" key={project.id}>
+                      <ProjectCard project={project} />
+                    </div>
+                  ))}
               
               {/* Skills Card - 2 columns */}
               <div className="md:col-span-2 lg:col-span-2">

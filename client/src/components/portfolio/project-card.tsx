@@ -1,23 +1,14 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Briefcase } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Project } from "@/types/portfolio";
 
 interface ProjectCardProps {
-  title: string;
-  description: string;
-  technologies: string[];
-  icon: string;
-  projectUrl?: string;
-  githubUrl?: string;
+  project: Project;
 }
 
-export function ProjectCard({ 
-  title, 
-  description, 
-  technologies, 
-  icon,
-  projectUrl,
-  githubUrl 
-}: ProjectCardProps) {
+export function ProjectCard({ project }: ProjectCardProps) {
+  const { title, description, technologies, projectUrl, githubUrl } = project;
+
   return (
     <div id="projects" className="glass-card rounded-3xl p-6 h-full transition-all duration-500 group">
       <div className="space-y-4">
@@ -34,7 +25,7 @@ export function ProjectCard({
         
         {/* Project visual representation */}
         <div className="w-full h-32 bg-gradient-to-br from-gray-600 to-gray-800 rounded-xl flex items-center justify-center">
-          <i className={`${icon} text-3xl text-gray-400`}></i>
+          <Briefcase className="text-3xl text-gray-400" />
         </div>
         
         <div className="space-y-2">
